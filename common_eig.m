@@ -36,8 +36,8 @@ function eigen_result = common_eig(covmat, options)
     % calculate the inner product (angle) between the eigenvectors
     eig_sim = v1' * v2;
     figure;
-    subplot(1,3,1); plot(d1(1:r1));title('eigenvalues of covmat 1');
-    subplot(1,3,2); plot(d2(1:r2));title('eigenvalues of covmat 2');
+    subplot(1,3,1); stem(d1(1:r1));title('eigenvalues of covmat 1');
+    subplot(1,3,2); stem(d2(1:r2));title('eigenvalues of covmat 2');
     subplot(1,3,3); imagesc(eig_sim(1:r1,1:r2));clim([0 1]); title('Inner product between the eigenvectors'); % visually identify common vectors
     drawnow;
     
