@@ -33,30 +33,35 @@ function result = fa_across_conds(corrmat,options)
 
     p = size(corrmat,1); % number of variables
     r = options.common_rank;
+    condn = size(corrmat,3); % number of conditions
 
     % set random start point
     [Q,Rw] = qr(rand(p,r)-.5,0); % random start point for Q
     idx = find(diag(Rw)<0); Q(:,idx) = -Q(:,idx); % ensure positive diagonal in Rw
-    S.Q = Q; S.D = rand(r,1) - .5; S.Psi = diag(corrmat-Q*diag(S.D.^2)*Q'); % initial parameters
+    S.Q = Q; S.D = rand(r,condn) - .5; 
+
+    for i = 1:condn
+        S.Psi(:,i) = diag(corrmat(:,:,i)-Q*diag(S.D(:,i).^2)*Q'); % initial parameters
+    end
 
     % create the problem structure
     elements = struct();
     elements.Q = stiefelfactory(p, r);
-    elements.D = euclideanfactory(r,1);
-    elements.Psi = euclideanfactory(p,1);
+    elements.D = euclideanfactory(r,condn);
+    elements.Psi = euclideanfactory(p,condn);
     M = productmanifold(elements);
     problem.M = M;
 
     % define the cost function and its gradient
-    problem.costgrad = @(S) costgrad(corrmat, S.Q, S.D, S.Psi, options.method);
+    problem.costgrad = @(S) costgrad(corrmat, S.Q, S.D, S.Psi, options.sample_n, options.method);
 
     % Numerically check gradient consistency (just once, optional).
-    checkgradient(problem); pause;
+    % checkgradient(problem); pause;
 
     % Now solve 
     init_point = S;
     [result, cost, info] = trustregions(problem, init_point, options.manopt);
-
+    
 
     % display some stats
     figure;
@@ -73,39 +78,62 @@ function result = fa_across_conds(corrmat,options)
 
 end
 
-function [f, G] = costgrad(R,Q,D,Psi,method)
+function [f, G] = costgrad(R,Q,D,Psi,sample_n,method)
     [p,r] = size(Q);
     D2 = D.^2;
     Psi2 = Psi.^2;
-    QD = Q.*repmat(D',p,1);
-    RM = QD*QD' + diag(Psi2);
 
-    Y = R - RM;
+    RM = zeros(p,p,size(R,3));
+    for cond = 1:size(R,3)
+        QD = Q .* repmat(D(:,cond)',p,1);
+        RM(:,:,cond) = QD * QD' + diag(Psi2(:,cond));
+    end
+
+    Y = R - RM; % residuals
 
     % objective function
     switch method
         case 'ML'
-            Y = (RM\Y)/RM;
-            f = (log(det(RM)) + trace(RM\R))/2;
+            f = zeros(size(R,3),1);
+            for cond = 1:size(R,3)
+                Y(:,:,cond) = (RM(:,:,cond)\Y(:,:,cond))/RM(:,:,cond);
+                f(cond) = sample_n(cond) .* (log(det(RM(:,:,cond))) + trace(RM(:,:,cond)\R(:,:,cond)))/2;
+            end
+            f = sum(f);
         case 'GLS'
-            W = Y/R;
-            Y = R\W;
-            f = trace(W*W)/4;
+            f = zeros(size(R,3),1);
+            for cond = 1:size(R,3)
+                W = Y(:,:,cond)/R(:,:,cond);
+                Y(:,:,cond) = R(:,:,cond)\W;
+                f(cond) = sample_n(cond) .* trace(W*W)/4;
+            end
+            f = sum(f);
         case 'LS'
-            f = trace(Y'*Y)/4;
+            f = zeros(size(R,3),1);
+            for cond = 1:size(R,3)
+                f(cond) = sample_n(cond) .* trace(Y(:,:,cond)'*Y(:,:,cond))/4;
+            end
+            f = sum(f);
         otherwise
             error('Unknown method');
     end
 
 
     % gradient
-    YQ = Y * Q;
-    gradQ = YQ .*repmat(D2',p,1);
+    G.Q = zeros(p,r,size(R,3));
+    for cond = 1:size(R,3)
+        YQ = Y(:,:,cond) * Q;
+        gradQ = YQ .* repmat(D2(:,cond)',p,1);
 
-    ww = Q'*gradQ;
-    G.Q = -gradQ + 0.5*Q*(ww+ww');
-    G.D = -diag(Q'*YQ) .* D;
-    G.Psi = -diag(Y).*Psi;
+        ww = Q'*gradQ;
+        G.Q(:,:,cond) = sample_n(cond) .* (-gradQ + 0.5*Q*(ww+ww'));
+    end
+    G.Q = sum(G.Q,3); % sum over conditions
+
+    for cond = 1:size(R,3)
+        G.D(:,cond) = -diag(Q'*Y(:,:,cond)*Q) .* D(:,cond) .* sample_n(cond);
+        G.Psi(:,cond) = -diag(Y(:,:,cond)) .* Psi(:,cond) .* sample_n(cond);
+    end
     
 
 end
