@@ -11,12 +11,14 @@ function result = fa_across_conds(corrmat,options)
     % sample_n: When the input is sample correlation matrices, this option specifies the number of observations to estimate the correlation matrices for each group. If not given, same number of observations is assumed. 
     % method: ML, LS or GLS method. If not given, use LS.
 
+    p = size(corrmat,1); % number of variables
+
     if ~exist('options', 'var') || isempty(options)
         options = struct();
     end
 
     if ~isfield(options, 'common_rank')
-        options.common_rank = nan;
+        options.common_rank = p-1;
     end
 
     if ~isfield(options, 'sample_n')
@@ -31,18 +33,17 @@ function result = fa_across_conds(corrmat,options)
         options.method = 'LS';
     end
 
-    p = size(corrmat,1); % number of variables
     r = options.common_rank;
     condn = size(corrmat,3); % number of conditions
 
     % set random start point
-    [Q,Rw] = qr(rand(p,r)-.5,0); % random start point for Q
-    idx = find(diag(Rw)<0); Q(:,idx) = -Q(:,idx); % ensure positive diagonal in Rw
-    S.Q = Q; S.D = rand(r,condn) - .5; 
+    % [Q,Rw] = qr(rand(p,r)-.5,0); % random start point for Q
+    % idx = find(diag(Rw)<0); Q(:,idx) = -Q(:,idx); % ensure positive diagonal in Rw
+    % S.Q = Q; S.D = rand(r,condn) - .5; 
 
-    for i = 1:condn
-        S.Psi(:,i) = diag(corrmat(:,:,i)-Q*diag(S.D(:,i).^2)*Q'); % initial parameters
-    end
+    % for i = 1:condn
+    %     S.Psi(:,i) = diag(corrmat(:,:,i)-Q*diag(S.D(:,i).^2)*Q'); % initial parameters
+    % end
 
     % create the problem structure
     elements = struct();
@@ -58,10 +59,27 @@ function result = fa_across_conds(corrmat,options)
     % Numerically check gradient consistency (just once, optional).
     % checkgradient(problem); pause;
 
+    % use the eigenvector of the mean covariance matrix as initial point
+    [v_avg,d_avg] = eig(mean(corrmat,3));
+    [d_avg,idx] = sort(diag(d_avg),'descend');
+    v_avg = v_avg(:,idx);
+    init_point.Q = v_avg(:,1:r);
+    init_point.D = repmat(sqrt(d_avg(1:r)),1,condn);
+    for i = 1:condn
+        init_point.Psi(:,i) = diag(corrmat(:,:,i)-init_point.Q*diag(init_point.D(:,i).^2)*init_point.Q'); % initial parameters
+    end
+
     % Now solve 
-    init_point = S;
     [result, cost, info] = trustregions(problem, init_point, options.manopt);
     
+    % the eigenvalues and the psi should be non-negative
+    result.D = abs(result.D);
+    result.Psi = abs(result.Psi);
+
+    % sort the common factors by the average eigenvalues
+    [~,idx] = sort(mean(result.D.^2,2),'descend');
+    result.Q = result.Q(:,idx);
+    result.D = result.D(idx,:);
 
     % display some stats
     figure;
