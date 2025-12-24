@@ -5,12 +5,23 @@ Common Principal Component Analysis (CPCA) is a generalized form of Principal Co
 
 The current implementation supports analysis of only two datasets.
 
+Similar approach can be extended to factor analysis to find common common-factors of several datasets. The covariance/correlation matrices of the datasets can be decomposed into two parts (Equation 5.13, section 5.3.2, ref.):
+
+$$
+R_{XX}=QD^2Q^T+\Psi^2
+$$
+
+where the first term corresponds to the common factors, and the second term corresponds to the unique factors. For multiple datasets, assume $Q$ is consistent across all datasets.
+
+
+
 ## Main Files
 - `common_eig.m`: Computes the common eigenvectors and eigenvalues of two covariance matrices using LS definition (9.6 in ref.). 
 - `cpca.m`: Implements Common Principal Component Analysis to find common principal components of two datasets.
+- `fa_across_conds.m`: Implements factor analysis across multiple conditions to find common common-factors.
 
 ## Installation and Dependencies
-- Ensure that your MATLAB environment has the Manopt toolbox installed, as `common_eig.m` relies on it.
+- Ensure that your MATLAB environment has the Manopt toolbox installed.
 - You can download the Manopt toolbox from the [Manopt website](http://www.manopt.org/) and follow the installation instructions provided there.
 
 ## Usage
@@ -18,6 +29,7 @@ The current implementation supports analysis of only two datasets.
 ```matlab
 eigen_result = common_eig(covmat, options);
 all_result = cpca(data1, data2);
+result = fa_across_conds(corrmats, options);
 ```
 
 ## References
