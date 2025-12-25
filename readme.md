@@ -3,8 +3,6 @@
 ## Introduction
 Common Principal Component Analysis (CPCA) is a generalized form of Principal Component Analysis (PCA) aimed at identifying common principal components of several distinct datasets. When it is assumed that the datasets collected under different conditions have the same components but different weights, CPCA can be used to identify these common components and their weights. The algorithm is based on eigenvalue decomposition.
 
-The current implementation supports analysis of only two datasets.
-
 Similar approach can be extended to factor analysis to find common common-factors of several datasets. The covariance/correlation matrices of the datasets can be decomposed into two parts (Equation 5.13, section 5.3.2, ref.):
 
 $$

@@ -10,6 +10,6 @@ function all_result = cpca(data1, data2)
 
     % compute the scores of the data based on the principal components
     all_result.eigenvectors = eigen_result.Q;
-    all_result.eigenvalues = [eigen_result.D1;eigen_result.D2].^2;
+    all_result.eigenvalues = [eigen_result.D].^2;
 
 end
