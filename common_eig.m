@@ -72,6 +72,11 @@ function eigen_result = common_eig(covmat, options)
     % Solve.
     [eigen_result, cost, info, options] = trustregions(problem, init_point, options.manopt);
 
+    % sort the common factors by the average eigenvalues
+    [~,idx] = sort(mean(eigen_result.D.^2,2),'descend');
+    eigen_result.Q = eigen_result.Q(:,idx);
+    eigen_result.D = eigen_result.D(idx,:);
+
 end
 
 
