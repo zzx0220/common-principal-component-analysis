@@ -63,14 +63,16 @@ function eigen_result = common_eig(covmat, options)
     % checkgradient(problem); %pause;
 
     % use the eigenvector of the mean covariance matrix as initial point
-    [v_avg,d_avg] = eig(mean(covmat,3));
-    [d_avg,idx] = sort(diag(d_avg),'descend');
-    v_avg = v_avg(:,idx);
-    init_point.Q = v_avg(:,1:r);
-    init_point.D = repmat(sqrt(d_avg(1:r)),1,condn);
+    if ~isfield(options, 'init_point')
+        [v_avg,d_avg] = eig(mean(covmat,3));
+        [d_avg,idx] = sort(diag(d_avg),'descend');
+        v_avg = v_avg(:,idx);
+        options.init_point.Q = v_avg(:,1:r);
+        options.init_point.D = repmat(sqrt(d_avg(1:r)),1,condn);
+    end
 
     % Solve.
-    [eigen_result, cost, info, options] = trustregions(problem, init_point, options.manopt);
+    [eigen_result, cost, info, options] = trustregions(problem, options.init_point, options.manopt);
 
     % sort the common factors by the average eigenvalues
     [~,idx] = sort(mean(eigen_result.D.^2,2),'descend');

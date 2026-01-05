@@ -60,17 +60,20 @@ function result = fa_across_conds(corrmat,options)
     % checkgradient(problem); pause;
 
     % use the eigenvector of the mean covariance matrix as initial point
-    [v_avg,d_avg] = eig(mean(corrmat,3));
-    [d_avg,idx] = sort(diag(d_avg),'descend');
-    v_avg = v_avg(:,idx);
-    init_point.Q = v_avg(:,1:r);
-    init_point.D = repmat(sqrt(d_avg(1:r)),1,condn);
-    for i = 1:condn
-        init_point.Psi(:,i) = diag(corrmat(:,:,i)-init_point.Q*diag(init_point.D(:,i).^2)*init_point.Q'); % initial parameters
+
+    if ~isfield(options, 'init_point')
+        [v_avg,d_avg] = eig(mean(corrmat,3));
+        [d_avg,idx] = sort(diag(d_avg),'descend');
+        v_avg = v_avg(:,idx);
+        options.init_point.Q = v_avg(:,1:r);
+        options.init_point.D = repmat(sqrt(d_avg(1:r)),1,condn);
+        for i = 1:condn
+            options.init_point.Psi(:,i) = diag(corrmat(:,:,i)-options.init_point.Q*diag(options.init_point.D(:,i).^2)*options.init_point.Q'); % initial parameters
+        end
     end
 
     % Now solve 
-    [result, cost, info] = trustregions(problem, init_point, options.manopt);
+    [result, cost, info] = trustregions(problem, options.init_point, options.manopt);
     
     % the eigenvalues and the psi should be non-negative
     result.D = abs(result.D);
